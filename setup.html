@@ -100,6 +100,14 @@
             margin-top: 14px;
             font-size: 14px;
         }
+
+        .status.success {
+            color: #2f6b2f;
+        }
+
+        .status.error {
+            color: #9b2c2c;
+        }
     </style>
 </head>
 <body>
@@ -141,12 +149,27 @@
         const statusNode = document.getElementById("status");
         const adminUserNode = document.getElementById("admin-user");
         const form = document.getElementById("setup-form");
+        const submitButton = form.querySelector("button");
+
+        function setStatus(message, kind = "") {
+            statusNode.textContent = message;
+            statusNode.className = `status ${kind}`.trim();
+        }
 
         async function loadStatus() {
             try {
                 const response = await fetch("/api/status");
                 const data = await response.json();
                 adminUserNode.textContent = `系统账户: ${data.admin_user}`;
+                if (data.provisioning_status === "running") {
+                    setStatus("配置已提交，设备正在切换到目标 Wi‑Fi，请稍后重新连接。", "success");
+                    submitButton.disabled = true;
+                } else if (data.provisioning_status === "success") {
+                    setStatus("配置完成。请连接目标 Wi‑Fi 后访问 http://openclaw.local 。", "success");
+                    submitButton.disabled = true;
+                } else if (data.provisioning_status === "error" && data.provisioning_message) {
+                    setStatus(data.provisioning_message, "error");
+                }
             } catch (error) {
                 adminUserNode.textContent = "系统账户: root";
             }
@@ -154,17 +177,26 @@
 
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
-            statusNode.textContent = "正在提交配置，请稍候...";
+            submitButton.disabled = true;
+            setStatus("正在提交配置，请稍候...", "");
 
-            const response = await fetch("/setup", {
-                method: "POST",
-                body: new FormData(form)
-            });
+            try {
+                const response = await fetch("/setup", {
+                    method: "POST",
+                    body: new FormData(form)
+                });
 
-            const data = await response.json();
-            statusNode.textContent = data.message;
-            if (response.ok) {
-                form.reset();
+                const data = await response.json();
+                if (response.ok) {
+                    setStatus("配置已提交。热点断开后，请切换到目标 Wi‑Fi 并访问 http://openclaw.local 。", "success");
+                    form.reset();
+                    return;
+                }
+
+                setStatus(data.message || "提交失败，请重试。", "error");
+                submitButton.disabled = false;
+            } catch (error) {
+                setStatus("请求已发出。如果热点即将断开，通常表示设备正在切换网络。", "success");
             }
         });
 

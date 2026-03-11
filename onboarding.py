@@ -4,7 +4,9 @@ import os
 import pwd
 import re
 import subprocess
+import time
 from pathlib import Path
+from threading import Lock, Thread
 
 from flask import Flask, jsonify, request, send_file
 
@@ -36,6 +38,8 @@ logging.basicConfig(
     ],
 )
 LOGGER = logging.getLogger("openclaw-onboarding")
+PROVISIONING_LOCK = Lock()
+PROVISIONING_STATE = {"status": "idle", "message": ""}
 
 
 def run_command(command, *, input_text=None):
@@ -219,6 +223,43 @@ def restart_ap_mode():
     switch_nginx_to_onboarding()
 
 
+def update_provisioning_state(status, message=""):
+    with PROVISIONING_LOCK:
+        PROVISIONING_STATE["status"] = status
+        PROVISIONING_STATE["message"] = message
+
+
+def read_provisioning_state():
+    with PROVISIONING_LOCK:
+        return dict(PROVISIONING_STATE)
+
+
+def provision_device(payload, admin_user):
+    connection_name = connection_name_for_ssid(payload["ssid"])
+
+    try:
+        # Give the HTTP response a chance to reach the browser before AP teardown.
+        time.sleep(1.0)
+        connect_wifi(payload["ssid"], payload["wifi_password"], connection_name)
+        run_command(["hostnamectl", "set-hostname", payload["hostname"]])
+        set_system_password(admin_user, payload["admin_password"])
+        persist_metadata(admin_user, payload["hostname"], payload["ssid"], connection_name)
+        switch_nginx_to_dashboard()
+        update_provisioning_state(
+            "success",
+            "configuration completed; reconnect to the target Wi-Fi and open http://openclaw.local",
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.strip() if exc.stderr else ""
+        LOGGER.exception("Provisioning command failed")
+        restart_ap_mode()
+        update_provisioning_state("error", stderr or "system command failed during provisioning")
+    except Exception as exc:
+        LOGGER.exception("Unexpected provisioning failure")
+        restart_ap_mode()
+        update_provisioning_state("error", str(exc))
+
+
 @APP.route("/")
 def index():
     return send_file(SETUP_PAGE)
@@ -227,11 +268,14 @@ def index():
 @APP.route("/api/status")
 def status():
     admin_user = select_admin_user()
+    provisioning_state = read_provisioning_state()
     return jsonify(
         {
             "initialized": INIT_FILE.exists(),
             "admin_user": admin_user,
             "hostname_default": "openclaw",
+            "provisioning_status": provisioning_state["status"],
+            "provisioning_message": provisioning_state["message"],
         }
     )
 
@@ -241,38 +285,32 @@ def setup():
     admin_user = select_admin_user()
     try:
         payload = validate_payload(request.form)
-        connection_name = connection_name_for_ssid(payload["ssid"])
+        current_state = read_provisioning_state()
+        if current_state["status"] == "running":
+            return jsonify({"status": "error", "message": "configuration is already in progress"}), 409
 
-        connect_wifi(payload["ssid"], payload["wifi_password"], connection_name)
-        run_command(["hostnamectl", "set-hostname", payload["hostname"]])
-        set_system_password(admin_user, payload["admin_password"])
-        persist_metadata(admin_user, payload["hostname"], payload["ssid"], connection_name)
-        switch_nginx_to_dashboard()
-
+        update_provisioning_state(
+            "running",
+            "configuration accepted; the device is switching to the target Wi-Fi",
+        )
+        Thread(
+            target=provision_device,
+            args=(payload, admin_user),
+            daemon=True,
+        ).start()
         return jsonify(
             {
-                "status": "success",
-                "message": "configuration completed; reconnect on the target Wi-Fi network",
+                "status": "accepted",
+                "message": "configuration accepted; reconnect to the target Wi-Fi when the hotspot disconnects",
                 "hostname": payload["hostname"],
                 "admin_user": admin_user,
             }
-        )
+        ), 202
     except ValueError as exc:
         LOGGER.warning("Validation error: %s", exc)
         return jsonify({"status": "error", "message": str(exc)}), 400
-    except subprocess.CalledProcessError as exc:
-        stderr = exc.stderr.strip() if exc.stderr else ""
-        LOGGER.exception("Provisioning command failed")
-        restart_ap_mode()
-        return jsonify(
-            {
-                "status": "error",
-                "message": stderr or "system command failed during provisioning",
-            }
-        ), 500
     except Exception as exc:
         LOGGER.exception("Unexpected provisioning failure")
-        restart_ap_mode()
         return jsonify({"status": "error", "message": str(exc)}), 500
 
 
