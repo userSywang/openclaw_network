@@ -241,8 +241,6 @@ def provision_device(payload, admin_user):
         # Give the HTTP response a chance to reach the browser before AP teardown.
         time.sleep(1.0)
         connect_wifi(payload["ssid"], payload["wifi_password"], connection_name)
-        run_command(["hostnamectl", "set-hostname", payload["hostname"]])
-        set_system_password(admin_user, payload["admin_password"])
         persist_metadata(admin_user, payload["hostname"], payload["ssid"], connection_name)
         switch_nginx_to_dashboard()
         update_provisioning_state(
@@ -262,7 +260,11 @@ def provision_device(payload, admin_user):
 
 @APP.route("/")
 def index():
-    return send_file(SETUP_PAGE)
+    response = send_file(SETUP_PAGE)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @APP.route("/api/status")
@@ -289,6 +291,8 @@ def setup():
         if current_state["status"] == "running":
             return jsonify({"status": "error", "message": "configuration is already in progress"}), 409
 
+        run_command(["hostnamectl", "set-hostname", payload["hostname"]])
+        set_system_password(admin_user, payload["admin_password"])
         update_provisioning_state(
             "running",
             "configuration accepted; the device is switching to the target Wi-Fi",

@@ -3,6 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>OpenClaw 初始配置</title>
     <style>
         :root {
@@ -150,6 +153,7 @@
         const adminUserNode = document.getElementById("admin-user");
         const form = document.getElementById("setup-form");
         const submitButton = form.querySelector("button");
+        let submitFallbackTimer = null;
 
         function setStatus(message, kind = "") {
             statusNode.textContent = message;
@@ -158,7 +162,7 @@
 
         async function loadStatus() {
             try {
-                const response = await fetch("/api/status");
+                const response = await fetch(`/api/status?t=${Date.now()}`, { cache: "no-store" });
                 const data = await response.json();
                 adminUserNode.textContent = `系统账户: ${data.admin_user}`;
                 if (data.provisioning_status === "running") {
@@ -179,23 +183,31 @@
             event.preventDefault();
             submitButton.disabled = true;
             setStatus("正在提交配置，请稍候...", "");
+            clearTimeout(submitFallbackTimer);
+            submitFallbackTimer = setTimeout(() => {
+                setStatus("配置已提交。若热点很快断开，表示设备正在切换到目标 Wi‑Fi。", "success");
+            }, 2500);
 
             try {
                 const response = await fetch("/setup", {
                     method: "POST",
-                    body: new FormData(form)
+                    body: new FormData(form),
+                    cache: "no-store"
                 });
 
                 const data = await response.json();
                 if (response.ok) {
+                    clearTimeout(submitFallbackTimer);
                     setStatus("配置已提交。热点断开后，请切换到目标 Wi‑Fi 并访问 http://openclaw.local 。", "success");
                     form.reset();
                     return;
                 }
 
+                clearTimeout(submitFallbackTimer);
                 setStatus(data.message || "提交失败，请重试。", "error");
                 submitButton.disabled = false;
             } catch (error) {
+                clearTimeout(submitFallbackTimer);
                 setStatus("请求已发出。如果热点即将断开，通常表示设备正在切换网络。", "success");
             }
         });
