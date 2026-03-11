@@ -117,7 +117,7 @@
     <div class="wrap">
         <section class="card">
             <h1>OpenClaw 初始配置</h1>
-            <p>首次使用时，请输入设备主机名、系统管理员密码和目标 Wi-Fi 信息。</p>
+            <p>首次使用时，请输入设备主机名、管理员密码和目标 Wi-Fi 信息。管理员账户固定为 root。</p>
 
             <form id="setup-form">
                 <label>
@@ -126,7 +126,7 @@
                 </label>
 
                 <label>
-                    系统管理员密码
+                    管理员密码 (固定账户 root)
                     <input name="admin_password" type="password" minlength="8" required>
                 </label>
 
@@ -143,7 +143,7 @@
                 <button type="submit">开始配置</button>
             </form>
 
-            <p class="hint" id="admin-user">系统账户: 加载中...</p>
+            <p class="hint" id="admin-user">固定管理员账户: root</p>
             <div class="status" id="status"></div>
         </section>
     </div>
@@ -164,7 +164,7 @@
             try {
                 const response = await fetch(`/api/status?t=${Date.now()}`, { cache: "no-store" });
                 const data = await response.json();
-                adminUserNode.textContent = `系统账户: ${data.admin_user}`;
+                adminUserNode.textContent = `固定管理员账户: ${data.admin_user || "root"}`;
                 if (data.provisioning_status === "running") {
                     setStatus("配置已提交，设备正在切换到目标 Wi‑Fi，请稍后重新连接。", "success");
                     submitButton.disabled = true;
@@ -175,7 +175,7 @@
                     setStatus(data.provisioning_message, "error");
                 }
             } catch (error) {
-                adminUserNode.textContent = "系统账户: root";
+                adminUserNode.textContent = "固定管理员账户: root";
             }
         }
 
