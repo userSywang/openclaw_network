@@ -123,23 +123,62 @@ def connect_wifi(ssid, wifi_password, connection_name):
     optional_command(["nmcli", "radio", "wifi", "on"])
     optional_command(["nmcli", "device", "set", WLAN_IF, "managed", "yes"])
     optional_command(["nmcli", "connection", "delete", connection_name])
+    optional_command(["nmcli", "device", "wifi", "rescan", "ifname", WLAN_IF])
 
-    command = [
-        "nmcli",
-        "device",
-        "wifi",
-        "connect",
-        ssid,
-        "ifname",
-        WLAN_IF,
-        "name",
-        connection_name,
-    ]
+    run_command(
+        [
+            "nmcli",
+            "connection",
+            "add",
+            "type",
+            "wifi",
+            "ifname",
+            WLAN_IF,
+            "con-name",
+            connection_name,
+            "ssid",
+            ssid,
+        ]
+    )
+
     if wifi_password:
-        command.extend(["password", wifi_password])
+        run_command(
+            [
+                "nmcli",
+                "connection",
+                "modify",
+                connection_name,
+                "wifi-sec.key-mgmt",
+                "wpa-psk",
+                "wifi-sec.psk",
+                wifi_password,
+            ]
+        )
+    else:
+        run_command(
+            [
+                "nmcli",
+                "connection",
+                "modify",
+                connection_name,
+                "wifi-sec.key-mgmt",
+                "none",
+            ]
+        )
 
-    run_command(command)
-    run_command(["nmcli", "connection", "modify", connection_name, "connection.autoconnect", "yes"])
+    run_command(
+        [
+            "nmcli",
+            "connection",
+            "modify",
+            connection_name,
+            "connection.autoconnect",
+            "yes",
+            "802-11-wireless.hidden",
+            "no",
+        ]
+    )
+    run_command(["nmcli", "connection", "up", connection_name])
     LOGGER.info("Connected to Wi-Fi SSID %s with connection %s", ssid, connection_name)
 
 
