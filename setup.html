@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenClaw 初始配置</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f3efe7;
+            --panel: #fffdf8;
+            --line: #d4c8b2;
+            --text: #2a241d;
+            --accent: #a64b2a;
+            --accent-dark: #7b3118;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", "PingFang SC", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(166, 75, 42, 0.15), transparent 28%),
+                linear-gradient(180deg, #faf6ef 0%, var(--bg) 100%);
+            color: var(--text);
+        }
+
+        .wrap {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .card {
+            width: min(100%, 520px);
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 24px 60px rgba(42, 36, 29, 0.12);
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+        }
+
+        p {
+            margin: 0 0 20px;
+            line-height: 1.6;
+        }
+
+        form {
+            display: grid;
+            gap: 14px;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            display: grid;
+            gap: 6px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: #fff;
+            font-size: 15px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 999px;
+            padding: 14px 18px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: var(--accent-dark);
+        }
+
+        .hint {
+            font-size: 13px;
+            opacity: 0.75;
+        }
+
+        .status {
+            min-height: 24px;
+            margin-top: 14px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <section class="card">
+            <h1>OpenClaw 初始配置</h1>
+            <p>首次使用时，请输入设备主机名、系统管理员密码和目标 Wi-Fi 信息。</p>
+
+            <form id="setup-form">
+                <label>
+                    设备主机名
+                    <input name="hostname" value="openclaw" maxlength="63" pattern="[a-z0-9-]+" required>
+                </label>
+
+                <label>
+                    系统管理员密码
+                    <input name="admin_password" type="password" minlength="8" required>
+                </label>
+
+                <label>
+                    Wi-Fi 名称 (SSID)
+                    <input name="ssid" required>
+                </label>
+
+                <label>
+                    Wi-Fi 密码
+                    <input name="wifi_password" type="password">
+                </label>
+
+                <button type="submit">开始配置</button>
+            </form>
+
+            <p class="hint" id="admin-user">系统账户: 加载中...</p>
+            <div class="status" id="status"></div>
+        </section>
+    </div>
+
+    <script>
+        const statusNode = document.getElementById("status");
+        const adminUserNode = document.getElementById("admin-user");
+        const form = document.getElementById("setup-form");
+
+        async function loadStatus() {
+            try {
+                const response = await fetch("/api/status");
+                const data = await response.json();
+                adminUserNode.textContent = `系统账户: ${data.admin_user}`;
+            } catch (error) {
+                adminUserNode.textContent = "系统账户: root";
+            }
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            statusNode.textContent = "正在提交配置，请稍候...";
+
+            const response = await fetch("/setup", {
+                method: "POST",
+                body: new FormData(form)
+            });
+
+            const data = await response.json();
+            statusNode.textContent = data.message;
+            if (response.ok) {
+                form.reset();
+            }
+        });
+
+        loadStatus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+[Unit]
+Description=OpenClaw onboarding Flask service
+After=network-online.target openclaw-firstboot.service
+Wants=network-online.target
+ConditionPathExists=!/etc/openclaw/initialized
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/openclaw
+ExecStart=/usr/bin/python3 /opt/openclaw/onboarding.py
+Restart=on-failure
+RestartSec=2s
+Environment=OPENCLAW_ADMIN_USER=root
+
+[Install]
+WantedBy=multi-user.target

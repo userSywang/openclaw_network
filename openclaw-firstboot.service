@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenClaw first-boot onboarding controller
+After=local-fs.target NetworkManager.service
+Wants=NetworkManager.service
+ConditionPathExists=!/etc/openclaw/initialized
+
+[Service]
+Type=oneshot
+ExecStart=/opt/openclaw/firstboot.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
