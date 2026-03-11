@@ -169,6 +169,7 @@ def persist_metadata(admin_user, hostname, ssid, connection_name):
 
 
 def restart_ap_mode():
+    optional_command(["rfkill", "unblock", "wlan"])
     optional_command(["nmcli", "device", "set", WLAN_IF, "managed", "no"])
     optional_command(["ip", "link", "set", WLAN_IF, "down"])
     optional_command(["ip", "addr", "flush", "dev", WLAN_IF])

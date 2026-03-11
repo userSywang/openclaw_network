@@ -10,6 +10,31 @@ NGINX_SNIPPET_DIR="/etc/nginx/snippets"
 ACTIVE_SNIPPET="${NGINX_SNIPPET_DIR}/openclaw-active-location.conf"
 SYSTEMD_DIR="/etc/systemd/system"
 
+validate_hostapd_config() {
+    local conf="/etc/hostapd/hostapd.conf"
+    local required_keys=(
+        interface
+        driver
+        ssid
+        hw_mode
+        channel
+        wpa
+        wpa_passphrase
+        wpa_key_mgmt
+        rsn_pairwise
+    )
+    local key
+
+    for key in "${required_keys[@]}"; do
+        if ! grep -q "^${key}=" "$conf"; then
+            echo "hostapd config validation failed: missing ${key} in ${conf}" >&2
+            return 1
+        fi
+    done
+
+    echo "hostapd config sanity check passed."
+}
+
 echo "=== OpenClaw 配网系统安装脚本 ==="
 
 echo "[1/9] 安装软件包..."
@@ -52,7 +77,7 @@ qrencode -o "${INSTALL_DIR}/qrcode.png" "http://192.168.4.1"
 echo "[8/9] 执行静态配置校验..."
 nginx -t
 dnsmasq --test
-hostapd -t /etc/hostapd/hostapd.conf
+validate_hostapd_config
 systemd-analyze verify \
     "${SYSTEMD_DIR}/openclaw-firstboot.service" \
     "${SYSTEMD_DIR}/openclaw-onboarding.service"

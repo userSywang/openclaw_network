@@ -31,6 +31,7 @@ update_ssid() {
 }
 
 configure_ap_address() {
+    rfkill unblock wlan || true
     nmcli device set "$WLAN_IF" managed no || true
     ip link set "$WLAN_IF" down || true
     ip addr flush dev "$WLAN_IF" || true

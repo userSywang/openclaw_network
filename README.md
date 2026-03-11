@@ -57,7 +57,7 @@ sudo reboot
 - 执行静态配置校验：
   - `nginx -t`
   - `dnsmasq --test`
-  - `hostapd -t /etc/hostapd/hostapd.conf`
+  - `hostapd` 配置键完整性检查
   - `systemd-analyze verify ...`
 - 仅启用：
   - `openclaw-firstboot`
