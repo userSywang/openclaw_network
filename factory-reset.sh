@@ -43,6 +43,7 @@ main() {
     systemctl stop openclaw-onboarding.service || true
     systemctl stop hostapd.service || true
     systemctl stop dnsmasq.service || true
+    nmcli device set wlan0 managed yes || true
 
     if [ -n "$connection_name" ]; then
         nmcli connection delete "$connection_name" || true

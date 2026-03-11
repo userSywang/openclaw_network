@@ -31,6 +31,7 @@ update_ssid() {
 }
 
 configure_ap_address() {
+    nmcli device set "$WLAN_IF" managed no || true
     ip link set "$WLAN_IF" down || true
     ip addr flush dev "$WLAN_IF" || true
     ip link set "$WLAN_IF" up
@@ -60,8 +61,8 @@ main() {
     systemctl start dnsmasq.service
     log "Started dnsmasq"
 
-    systemctl start openclaw-onboarding.service
-    log "Started onboarding service"
+    systemctl start --no-block openclaw-onboarding.service
+    log "Queued onboarding service startup"
 }
 
 main "$@"
