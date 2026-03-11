@@ -47,6 +47,7 @@ mkdir -p "$INSTALL_DIR" "$TEMPLATE_DIR" "$CONFIG_DIR" /var/log/openclaw "$NGINX_
 echo "[3/9] 复制应用文件..."
 install -m 755 "${REPO_DIR}/firstboot.sh" "${INSTALL_DIR}/firstboot.sh"
 install -m 755 "${REPO_DIR}/onboarding.py" "${INSTALL_DIR}/onboarding.py"
+install -m 755 "${REPO_DIR}/dashboard.py" "${INSTALL_DIR}/dashboard.py"
 install -m 755 "${REPO_DIR}/factory-reset.sh" "${INSTALL_DIR}/factory-reset.sh"
 install -m 644 "${REPO_DIR}/setup.html" "${TEMPLATE_DIR}/setup.html"
 
@@ -63,6 +64,7 @@ ln -sfn "${NGINX_SNIPPET_DIR}/openclaw-onboarding.conf" "$ACTIVE_SNIPPET"
 echo "[5/9] 复制 systemd 单元..."
 install -m 644 "${REPO_DIR}/openclaw-firstboot.service" "${SYSTEMD_DIR}/openclaw-firstboot.service"
 install -m 644 "${REPO_DIR}/openclaw-onboarding.service" "${SYSTEMD_DIR}/openclaw-onboarding.service"
+install -m 644 "${REPO_DIR}/openclaw-dashboard.service" "${SYSTEMD_DIR}/openclaw-dashboard.service"
 systemctl unmask hostapd.service || true
 systemctl disable hostapd.service dnsmasq.service || true
 systemctl daemon-reload
@@ -80,13 +82,16 @@ dnsmasq --test
 validate_hostapd_config
 systemd-analyze verify \
     "${SYSTEMD_DIR}/openclaw-firstboot.service" \
-    "${SYSTEMD_DIR}/openclaw-onboarding.service"
+    "${SYSTEMD_DIR}/openclaw-onboarding.service" \
+    "${SYSTEMD_DIR}/openclaw-dashboard.service"
 
 echo "[9/9] 启用服务..."
 systemctl enable openclaw-firstboot.service
+systemctl enable openclaw-dashboard.service
 systemctl enable nginx.service
 systemctl enable avahi-daemon.service
 systemctl enable NetworkManager.service
+systemctl restart openclaw-dashboard.service
 systemctl restart nginx.service
 
 echo

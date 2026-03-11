@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenClaw minimal dashboard
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/openclaw
+ExecStart=/usr/bin/python3 /opt/openclaw/dashboard.py
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

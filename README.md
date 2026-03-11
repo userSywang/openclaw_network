@@ -5,6 +5,7 @@
 - `hostapd` 提供首次启动热点
 - `dnsmasq` 提供 DHCP/DNS 劫持到 `192.168.4.1`
 - `Flask` 提供首次配网页面
+- `Flask` 提供最小 OpenClaw dashboard/API
 - `nginx` 对外统一暴露 HTTP 入口
 - `avahi-daemon` 广播 HTTP 服务
 - `systemd` 编排启动顺序
@@ -22,6 +23,7 @@
    - 设置主机名
    - 写入 `/etc/openclaw/initialized`
    - 将 nginx 切换到 dashboard 代理配置
+   - 由 `openclaw-dashboard.service` 提供最小 dashboard 与 `/api/status`
 7. 后续通过 `http://openclaw.local` 访问；如果你修改了主机名，则使用 `http://<hostname>.local`。
 
 ## 仓库文件
@@ -39,6 +41,7 @@
 - `nginx-snippets/openclaw-dashboard.conf`
 - `openclaw-firstboot.service`
 - `openclaw-onboarding.service`
+- `openclaw-dashboard.service`
 - `factory-reset.sh`
 
 ## 安装
@@ -61,6 +64,7 @@ sudo reboot
   - `systemd-analyze verify ...`
 - 仅启用：
   - `openclaw-firstboot`
+  - `openclaw-dashboard`
   - `nginx`
   - `avahi-daemon`
   - `NetworkManager`
@@ -71,6 +75,7 @@ sudo reboot
 
 - `/opt/openclaw/firstboot.sh`
 - `/opt/openclaw/onboarding.py`
+- `/opt/openclaw/dashboard.py`
 - `/opt/openclaw/factory-reset.sh`
 - `/opt/openclaw/templates/setup.html`
 - `/etc/openclaw/initialized`
@@ -88,6 +93,7 @@ sudo reboot
 - `/etc/nginx/snippets/openclaw-active-location.conf`
 - `/etc/systemd/system/openclaw-firstboot.service`
 - `/etc/systemd/system/openclaw-onboarding.service`
+- `/etc/systemd/system/openclaw-dashboard.service`
 
 ## 自检
 
@@ -96,6 +102,7 @@ sudo reboot
 ```bash
 systemctl status openclaw-firstboot
 systemctl status openclaw-onboarding
+systemctl status openclaw-dashboard
 systemctl status hostapd
 systemctl status dnsmasq
 systemctl status nginx
@@ -105,6 +112,8 @@ ip addr show wlan0
 cat /etc/hostapd/hostapd.conf
 journalctl -u openclaw-firstboot -n 50
 journalctl -u openclaw-onboarding -n 50
+curl -I http://127.0.0.1:8080
+curl http://127.0.0.1:8080/api/status
 curl -I http://192.168.4.1
 curl -I http://openclaw.local
 ```
