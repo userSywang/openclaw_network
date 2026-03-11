@@ -111,6 +111,30 @@
         .status.error {
             color: #9b2c2c;
         }
+
+        .next-step {
+            display: none;
+            margin-top: 16px;
+        }
+
+        .next-step.show {
+            display: block;
+        }
+
+        .next-step a {
+            display: inline-block;
+            text-decoration: none;
+            border-radius: 999px;
+            padding: 12px 18px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .next-step a:hover {
+            background: var(--accent-dark);
+        }
     </style>
 </head>
 <body>
@@ -145,19 +169,24 @@
 
             <p class="hint" id="admin-user">固定管理员账户: root</p>
             <div class="status" id="status"></div>
+            <div class="next-step" id="next-step">
+                <a href="http://openclaw.local">已连上 Wi-Fi，执行下一步</a>
+            </div>
         </section>
     </div>
 
     <script>
         const statusNode = document.getElementById("status");
         const adminUserNode = document.getElementById("admin-user");
+        const nextStepNode = document.getElementById("next-step");
         const form = document.getElementById("setup-form");
         const submitButton = form.querySelector("button");
         let submitFallbackTimer = null;
 
-        function setStatus(message, kind = "") {
+        function setStatus(message, kind = "", showNextStep = false) {
             statusNode.textContent = message;
             statusNode.className = `status ${kind}`.trim();
+            nextStepNode.className = showNextStep ? "next-step show" : "next-step";
         }
 
         async function loadStatus() {
@@ -166,10 +195,10 @@
                 const data = await response.json();
                 adminUserNode.textContent = `固定管理员账户: ${data.admin_user || "root"}`;
                 if (data.provisioning_status === "running") {
-                    setStatus("配置已提交，设备正在切换到目标 Wi‑Fi，请稍后重新连接。", "success");
+                    setStatus("配置已提交。设备正在切换到目标 Wi‑Fi；如果你已回到目标网络，请点击下方“执行下一步”。", "success", true);
                     submitButton.disabled = true;
                 } else if (data.provisioning_status === "success") {
-                    setStatus("配置完成。请连接目标 Wi‑Fi 后访问 http://openclaw.local 。", "success");
+                    setStatus("配置完成。如果你已经连接到目标 Wi‑Fi，请点击下方“执行下一步”打开 OpenClaw。", "success", true);
                     submitButton.disabled = true;
                 } else if (data.provisioning_status === "error" && data.provisioning_message) {
                     setStatus(data.provisioning_message, "error");
@@ -185,7 +214,7 @@
             setStatus("正在提交配置，请稍候...", "");
             clearTimeout(submitFallbackTimer);
             submitFallbackTimer = setTimeout(() => {
-                setStatus("配置已提交。若热点很快断开，表示设备正在切换到目标 Wi‑Fi。", "success");
+                setStatus("配置已提交。若设备已经连上目标 Wi‑Fi，请点击下方“执行下一步”。", "success", true);
             }, 2500);
 
             try {
@@ -198,7 +227,7 @@
                 const data = await response.json();
                 if (response.ok) {
                     clearTimeout(submitFallbackTimer);
-                    setStatus("配置已提交。热点断开后，请切换到目标 Wi‑Fi 并访问 http://openclaw.local 。", "success");
+                    setStatus("配置已提交。若设备已连接目标 Wi‑Fi，请点击下方“执行下一步”进入 OpenClaw。", "success", true);
                     form.reset();
                     return;
                 }
@@ -208,7 +237,7 @@
                 submitButton.disabled = false;
             } catch (error) {
                 clearTimeout(submitFallbackTimer);
-                setStatus("请求已发出。如果热点即将断开，通常表示设备正在切换网络。", "success");
+                setStatus("请求已发出。如果设备已连接目标 Wi‑Fi，请点击下方“执行下一步”。", "success", true);
             }
         });
 
